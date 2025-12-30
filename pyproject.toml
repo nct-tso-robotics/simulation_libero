@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "libero-pro"
+version = "0.1.0"
+description = "LIBERO-Pro: Towards Robust and Fair Evaluation of Vision-Language-Action Models Beyond Memorization"
+license = { text = "MIT" }
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "hydra-core>=1.2.0",
+    "numpy>=1.22.4",
+    "wandb",
+    "easydict",
+    "transformers",
+    "opencv-python",
+    "robomimic>=0.2.0",
+    "einops",
+    "robosuite==1.4.1",
+    "numba>=0.58.0",  
+    "bddl",
+    "matplotlib",
+    "cloudpickle",
+    "gym",
+    "draccus",
+    "imageio[ffmpeg]",
+    "tqdm",
+    "pyyaml",
+    "torch==2.4.0",
+    "torchaudio==2.4.0",
+    "torchvision==0.19.0",
+    "imitation-learning-toolkit",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+]
+
+[project.scripts]
+"lifelong.main" = "libero.lifelong.main:main"
+"lifelong.eval" = "libero.lifelong.evaluate:main"
+"libero.config_copy" = "scripts.config_copy:main"
+"libero.create_template" = "scripts.create_template:main"
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch" }
+torchaudio = { index = "pytorch" }
+torchvision = { index = "pytorch" }
+imitation-learning-toolkit = { git = "https://gitlab.com/nct_tso_public/imitation-learning-toolkit.git" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["libero", "scripts"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "libero/**/*.py",
+    "scripts/**/*.py",
+    "libero_ood/*.yaml",
+    "evaluation_config.yaml",
+    "*.py",
+]

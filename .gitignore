@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Ruff cache
+.ruff_cache/
+
+uv.lock
+libero_server.py
+
+# Datasets (h5py demonstration files - too large)
+libero/datasets/
+*.hdf5
+*.h5
+
+# Runtime/output directories
+experiments/
+rollouts/
+
+# Jupyter
+.ipynb_checkpoints/
