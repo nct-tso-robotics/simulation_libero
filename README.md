@@ -77,6 +77,43 @@ If you need a specific version/commit, you can pin it:
 imitation-learning-toolkit = { git = "https://gitlab.com/nct_tso_public/imitation-learning-toolkit.git", rev = "main" }
 ```
 
+## Downloading LIBERO Datasets
+
+For training your models on LIBERO, you need to download the LIBERO demonstration datasets.
+
+### Option 1: Using the download script
+
+Download all datasets:
+```bash
+python benchmark_scripts/download_libero_datasets.py
+```
+
+Or download specific datasets:
+```bash
+python benchmark_scripts/download_libero_datasets.py --datasets libero_spatial
+python benchmark_scripts/download_libero_datasets.py --datasets libero_object
+python benchmark_scripts/download_libero_datasets.py --datasets libero_goal
+python benchmark_scripts/download_libero_datasets.py --datasets libero_10
+```
+
+### Option 2: Using HuggingFace
+
+Download from HuggingFace (alternative mirror):
+```bash
+python benchmark_scripts/download_libero_datasets.py --use-huggingface
+```
+
+Or for specific datasets:
+```bash
+python benchmark_scripts/download_libero_datasets.py --datasets libero_spatial --use-huggingface
+```
+
+The datasets are also available directly at: https://huggingface.co/datasets/yifengzhu-hf/LIBERO-datasets
+
+Datasets will be stored in `libero/datasets/` by default.
+
+For more details, see the original [LIBERO repository](https://github.com/Lifelong-Robot-Learning/LIBERO).
+
 ## Running Evaluation
 
 ### Step 1: Start the LIBERO Simulation Server
