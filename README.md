@@ -1,3 +1,170 @@
+# LIBERO-Pro with Socket Server Integration
+
+This repository integrates the **LIBERO-Pro** simulation framework with a ZMQ-based Socket Server that enables remote policy evaluation. The server can be used together with a Policy Client from the [Surg-IL library](https://gitlab.com/nct_tso_public/surg-il), allowing the policy learning library to remain independent of the simulation engine.
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           Machine A (GPU Server)                            │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                     Surg-IL Policy Client                             │  │
+│  │  - Loads trained checkpoint                                           │  │
+│  │  - Receives observations via ZMQ                                      │  │
+│  │  - Computes actions using the policy                                  │  │
+│  │  - Sends actions back to simulation server                            │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                              ZMQ Socket
+                           (TCP connection)
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        Machine B (Simulation Server)                        │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                   LIBERO-Pro Policy Server                            │  │
+│  │  - Runs LIBERO simulation environment                                 │  │
+│  │  - Handles environment resets and stepping                            │  │
+│  │  - Sends observations (images, proprioception)                        │  │
+│  │  - Receives and executes actions                                      │  │
+│  │  - Tracks episode success/failure                                     │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Installation
+
+This repository uses [uv](https://docs.astral.sh/uv/) for dependency management and supports modern PyTorch versions (2.4.0+).
+
+### Prerequisites
+
+- Python 3.10+
+- CUDA 12.4 (for GPU support)
+- Conda/Mamba (for environment management)
+- Git credentials for private GitLab repositories (see below)
+
+### Setup Steps
+
+1. **Configure git credentials** (required for private dependencies):
+   ```bash
+   git config --global credential.helper store
+   ```
+   Then authenticate once to GitLab (e.g., by cloning a private repo). This stores credentials so `uv` can fetch the `imitation-learning-toolkit` dependency.
+
+2. **Create a conda/mamba environment and install uv:**
+   ```bash
+   conda create -n libero-pro python=3.10
+   conda activate libero-pro
+   pip install uv
+   ```
+
+3. **Install dependencies using uv with the conda prefix:**
+   ```bash
+   UV_PROJECT_ENVIRONMENT=$CONDA_PREFIX uv sync
+   ```
+
+### Private Dependencies
+
+This project depends on [imitation-learning-toolkit](https://gitlab.com/nct_tso_public/imitation-learning-toolkit), a shared library for socket communication. The dependency is specified in `pyproject.toml` as a git source:
+
+```toml
+[tool.uv.sources]
+imitation-learning-toolkit = { git = "https://gitlab.com/nct_tso_public/imitation-learning-toolkit.git" }
+```
+
+If you need a specific version/commit, you can pin it:
+```toml
+imitation-learning-toolkit = { git = "https://gitlab.com/nct_tso_public/imitation-learning-toolkit.git", rev = "main" }
+```
+
+## Running Evaluation
+
+### Step 1: Start the LIBERO Simulation Server
+
+On the simulation machine, run:
+
+```bash
+python run_libero_eval.py \
+    --task_suite_name libero_spatial \
+    --ip_address 0.0.0.0 \
+    --port 5555 \
+    --num_trials_per_task 50 \
+    --resolution 128
+```
+
+**Configuration options:**
+- `--task_suite_name`: LIBERO benchmark suite (`libero_spatial`, `libero_object`, `libero_goal`, `libero_10`, `libero_90`)
+- `--evaluation_config_path`: Path to perturbation config (default: `./evaluation_config.yaml`)
+- `--ip_address`: IP to bind the server (use `0.0.0.0` for remote access)
+- `--port`: Port for ZMQ communication
+- `--num_trials_per_task`: Number of episodes per task
+- `--resolution`: Image resolution 
+
+### Step 2: Run the Policy Client (Surg-IL)
+
+On the policy machine (can be the same or different), use the Surg-IL library to run the policy client:
+
+```bash
+python -m src.refactoring.endpoints.test \
+    --checkpoint-path "/path/to/checkpoints" \
+    --checkpoint-name "model.ckpt" \
+    --model-server-address <server_ip> \
+    --model-server-port 5555 \
+    --temporal-agg 1 \
+    --enable-logging 1
+```
+
+The client will:
+1. Connect to the LIBERO server via ZMQ
+2. Receive observations (images + proprioception)
+3. Compute actions using the trained policy
+4. Send actions back to the simulation
+5. Log results and save rollout videos
+
+For the full Surg-IL client documentation, see: https://gitlab.com/nct_tso_public/surg-il
+
+## Perturbation Configuration
+
+LIBERO-Pro supports various generalization perturbations configured via `evaluation_config.yaml`:
+
+```yaml
+use_swap: false        # Position perturbation
+use_object: false      # Object appearance perturbation
+use_language: false    # Semantic/language perturbation
+use_task: false        # Task logic perturbation
+use_environment: false # Environment replacement
+```
+
+Note: `use_task` cannot be combined with other perturbations.
+
+## Socket Communication Protocol
+
+The server exposes three routes via ZMQ:
+
+| Route | Description |
+|-------|-------------|
+| `reset_episode` | Reset environment for a new episode |
+| `get_observation` | Get current observation without stepping |
+| `send_action` | Send 7D action and receive next observation |
+
+**Action format:** 7D vector `[pos_delta(3), ori_delta(3), gripper(1)]`
+
+**Observation includes:**
+- `agentview_rgb`: Third-person camera image
+- `eye_in_hand_rgb`: Wrist camera image
+- `ee_pos`: End-effector position (3D)
+- `ee_ori`: End-effector orientation (axis-angle, 3D)
+- `gripper_states`: Gripper position (2D)
+- `language_instruction`: Task description string
+
+---
+
+# Original LIBERO-Pro README
+
+*The following is the original README from the LIBERO-Pro benchmark for reference:*
+
+---
+
 <div align="center">
 
 <img src="https://github.com/Zxy-MLlab/LIBERO-OOD/blob/master/images/liberopro_logo.png" width="360">
@@ -6,9 +173,9 @@
 
 **Xueyang Zhou<sup>1</sup>, Yangming Xu<sup>1</sup>, Guiyao Tie<sup>1</sup>, Yongchao Chen<sup>2,3</sup>, Guowen Zhang<sup>1</sup>, Duanfeng Chu<sup>4</sup>, Pan Zhou<sup>1</sup>, Lichao Sun<sup>5</sup>**
 
-<sup>1</sup> **Huazhong University of Science and Technology**  
-<sup>2</sup> **Harvard University** <sup>3</sup> **Massachusetts Institute of Technology**  
-<sup>4</sup> **Wuhan University of Technology** <sup>5</sup> **Lehigh University**
+<sup>1</sup> **Huazhong University of Science and Technology**
+<sup>2</sup> **Harvard University** <sup>3</sup> **Massachusetts Institute of Technology**
+<sup>4</sup> **Wuhan University of Technology** <sup>5</sup> **Lehigh University**
 
 [![Tests Passing](https://github.com/anuraghazra/github-readme-stats/workflows/Test/badge.svg)](https://github.com/Zxy-MLlab/LIBERO-PRO/actions)
 [![Contributors](https://img.shields.io/github/contributors/Lifelong-Robot-Learning/LIBERO)](https://github.com/Zxy-MLlab/LIBERO-PRO/graphs/contributors)
@@ -30,20 +197,20 @@
 ![pull_figure](https://github.com/Zxy-MLlab/LIBERO-OOD/blob/master/images/overall.png)
 </div>
 
-## ✨ News ✨​
-- [2025/11/05] 📊 All bddl and init files have been uploaded to Huggingface (supports fast parallel evaluation): [Dataset](https://huggingface.co/datasets/zhouxueyang/LIBERO-Pro)
-- [2025/10/29] 🌐 We launched the official project website for LIBERO-Pro (with more demos & details): [Webpage](https://zxy-mllab.github.io/LIBERO-PRO-Webpage/)
-- [2025/10/22] 📱 We have shared a project promotion post on Xhs: [Xhs](http://xhslink.com/o/5vmaip7wQCE/)
-- [2025/10/20] 💬 We have created an official WeChat account (join discussions, get quick Q&A) [WeChat](https://github.com/Zxy-MLlab/LIBERO-OOD/blob/master/images/wechat.png)​
-- [2025/10/05] 🤖 We have released the full LIBERO-Pro code on GitHub: [Code​](https://github.com/Zxy-MLlab/LIBERO-PRO)
-- [2025/10/04] 🎉 Our paper, LIBERO-Pro: Towards Robust and Fair Evaluation of Vision-Language-Action Models Beyond Memorization is now available on arXiv: [Paper](https://arxiv.org/pdf/2510.03827)
+## News
+- [2025/11/05] All bddl and init files have been uploaded to Huggingface (supports fast parallel evaluation): [Dataset](https://huggingface.co/datasets/zhouxueyang/LIBERO-Pro)
+- [2025/10/29] We launched the official project website for LIBERO-Pro (with more demos & details): [Webpage](https://zxy-mllab.github.io/LIBERO-PRO-Webpage/)
+- [2025/10/22] We have shared a project promotion post on Xhs: [Xhs](http://xhslink.com/o/5vmaip7wQCE/)
+- [2025/10/20] We have created an official WeChat account (join discussions, get quick Q&A) [WeChat](https://github.com/Zxy-MLlab/LIBERO-OOD/blob/master/images/wechat.png)​
+- [2025/10/05] We have released the full LIBERO-Pro code on GitHub: [Code​](https://github.com/Zxy-MLlab/LIBERO-PRO)
+- [2025/10/04] Our paper, LIBERO-Pro: Towards Robust and Fair Evaluation of Vision-Language-Action Models Beyond Memorization is now available on arXiv: [Paper](https://arxiv.org/pdf/2510.03827)
 
-## 🌟 Follow Us
+## Follow Us
 We are committed to continuously improving **LIBERO-Pro** based on your feedback. Our goal is to establish a fair and simple evaluation environment for Vision-Language-Action (VLA) models. Your input is invaluable in helping us achieve this goal!
 
 ---
 
-## 🔍 Motivation
+## Motivation
 Recent VLA models have demonstrated impressive performance on known tasks; however, our observations suggest that such success largely stems from mechanical memorization of training scenarios rather than genuine acquisition of transferable task-solving strategies.
 
 
@@ -54,15 +221,15 @@ Recent VLA models have demonstrated impressive performance on known tasks; howev
 | **Pi0.5** | ![](https://img.shields.io/badge/0.97-blue) | ![](https://img.shields.io/badge/0.0-orange) | ![](https://img.shields.io/badge/0.4-green) | ![](https://img.shields.io/badge/0.96-blue) | ![](https://img.shields.io/badge/0.0-orange) | ![](https://img.shields.io/badge/0.2-green) | ![](https://img.shields.io/badge/0.93-blue) | ![](https://img.shields.io/badge/0.0-orange) | ![](https://img.shields.io/badge/0.1-green) | ![](https://img.shields.io/badge/0.98-blue) | ![](https://img.shields.io/badge/0.0-orange) | ![](https://img.shields.io/badge/0.2-green) |
 | **UniVLA** | ![](https://img.shields.io/badge/0.89-blue) | ![](https://img.shields.io/badge/0.0-orange) | ![](https://img.shields.io/badge/0.1-green) | ![](https://img.shields.io/badge/0.85-blue) | ![](https://img.shields.io/badge/0.0-orange) | ![](https://img.shields.io/badge/0.1-green) | ![](https://img.shields.io/badge/0.61-blue) | ![](https://img.shields.io/badge/0.0-orange) | ![](https://img.shields.io/badge/0.0-green) | ![](https://img.shields.io/badge/0.98-blue) | ![](https://img.shields.io/badge/0.0-orange) | ![](https://img.shields.io/badge/0.0-green) |
 
-> 🟦 **Original** 🟧 **+ P1: Task Perturbation** 🟩 **+ P2: Position Perturbation**  
-> 📉 *All models achieve >0.9 on original LIBERO tasks but collapse under LIBERO-PRO perturbations, showing poor true generalization.*
+> **Original** **+ P1: Task Perturbation** **+ P2: Position Perturbation**
+> *All models achieve >0.9 on original LIBERO tasks but collapse under LIBERO-PRO perturbations, showing poor true generalization.*
 
 ---
-## 🌍 Fairer Environment
+## Fairer Environment
 **LIBERO-Pro** calls for a more *rigorous, standardized, and transparent* approach to measuring generalization, helping the community move **beyond memorization and toward true understanding**.
 
 
-## ⚙️ Five Core Generalization Dimensions
+## Five Core Generalization Dimensions
 <div align="center">
 
 <table>
@@ -83,7 +250,7 @@ Recent VLA models have demonstrated impressive performance on known tasks; howev
 
 <tr>
 <td align="center"><b>Position</b></td>
-<td align="center">Relocates objects within feasible spatial bounds to evaluate the model’s adaptability to spatial position changes.</td>
+<td align="center">Relocates objects within feasible spatial bounds to evaluate the model's adaptability to spatial position changes.</td>
 <td align="center">Change the position of "cup" and "bowl"</td>
 </tr>
 
@@ -111,7 +278,7 @@ Recent VLA models have demonstrated impressive performance on known tasks; howev
 </div>
 
 
-> 🧩 These perturbations are **combinable and configurable** via YAML for scalable and controlled generalization studies.
+> These perturbations are **combinable and configurable** via YAML for scalable and controlled generalization studies.
 
 ---
 
@@ -132,14 +299,14 @@ Recent VLA models have demonstrated impressive performance on known tasks; howev
 
 ---
 
-# Installation
+# Legacy Installation (Original LIBERO method)
 
 Clone the official LIBERO-PRO repository by run:
 ```bash
 git clone https://github.com/Zxy-MLlab/LIBERO-PRO/
 ```
 
-LIBERO-PRO is developed based on the original LIBERO benchmark, so it uses the same runtime environment as LIBERO—no separate environment configuration for LIBERO-PRO is needed. You only need to install the environment in accordance with LIBERO’s official requirements, as shown below:
+LIBERO-PRO is developed based on the original LIBERO benchmark, so it uses the same runtime environment as LIBERO—no separate environment configuration for LIBERO-PRO is needed. You only need to install the environment in accordance with LIBERO's official requirements, as shown below:
 
 ```bash
 conda create -n libero_pro python=3.8.13
@@ -156,23 +323,23 @@ pip install -e .
 
 # LIBERO-Pro Evaluation
 
-## ⚡️ Quick Start
+## Quick Start
 Follow the steps below to quickly set up and run **LIBERO-Pro** for your own evaluations.
 
-💡 **Note:**  
+**Note:**
 To enable stable and fast parallel evaluation, we updated `libero/libero/benchmark/__init__.py` and `libero/libero/benchmark/libero_suite_task_map.py`. If you cloned the repo **before 2025/11/05**, please re-download and replace these two files.
 
-### 1️⃣ Download Required Files
-First, download all `bddl_files` and `init_files` from our official Huggingface dataset: 👉 [LIBERO-Pro Dataset](https://huggingface.co/datasets/zhouxueyang/LIBERO-Pro)
+### 1. Download Required Files
+First, download all `bddl_files` and `init_files` from our official Huggingface dataset: [LIBERO-Pro Dataset](https://huggingface.co/datasets/zhouxueyang/LIBERO-Pro)
 
-### 2️⃣ Move Files into LIBERO-Pro Structure
+### 2. Move Files into LIBERO-Pro Structure
 Move the downloaded files into the correct LIBERO-Pro directory structure:
 ```
 mv libero_data/bddl_files/* libero/libero/bddl_files/
 mv libero_data/init_files/* libero/libero/init_files/
 ```
 
-## 3️⃣ Configure Evaluation Settings
+## 3. Configure Evaluation Settings
 All evaluation parameters can be set in the file:
 ```
 evaluation_config.yaml
@@ -187,7 +354,7 @@ use_task: true
 ```
 
 ## Custom Evaluation (Optional)
-To specify combined-type generalization evaluation, modify `evaluation_config.yaml` in your project directory.  
+To specify combined-type generalization evaluation, modify `evaluation_config.yaml` in your project directory.
 
 | Parameter | Function |
 | ----------------- | -------------------------------------------------------------------------------------- |
@@ -202,7 +369,7 @@ To specify combined-type generalization evaluation, modify `evaluation_config.ya
 ## Evaluation on OpenVLA
 Below is a reference code snippet for conducting LIBERO-PRO generalization evaluation on OpenVLA. Please place LIBERO-PRO in the following directory:
 ```
-# 📁 openvla-oft-main
+# openvla-oft-main
 .
 ├── .idea/
 ├── experiments/
@@ -375,7 +542,7 @@ def eval_libero(cfg: GenerateConfig) -> float:
 Note!!! For unknown reasons, in some cases replacing the environment will cause the objects on the table to move randomly. After many tests, replacing the environment with 'main_table' works and we are actively in contact with the authors of LIBERO to fix this issue.
 
 
-## 🏆 LIBERO-Pro Model Leaderboard
+## LIBERO-Pro Model Leaderboard
 
 The following table summarizes model performance under **five generalization perturbations** in LIBERO-Pro. Each cell represents the normalized success rate (**0.00–1.00**).
 
@@ -598,19 +765,19 @@ The following table summarizes model performance under **five generalization per
 </tbody>
 </table>
 
-✅ *We will continue to expand the LIBERO-PRO leaderboard with new model evaluations. Researchers are warmly invited to use LIBERO-PRO to assess their Vision-Language-Action (VLA) models and share the results with us for inclusion in the official online leaderboard.*
+*We will continue to expand the LIBERO-PRO leaderboard with new model evaluations. Researchers are warmly invited to use LIBERO-PRO to assess their Vision-Language-Action (VLA) models and share the results with us for inclusion in the official online leaderboard.*
 
 # Initial Position Perturbation Experiment
 
 This guide provides a step-by-step procedure for reproducing the **Object Position Perturbation Evaluation** and replicating the results shown in **Figure 6** of the paper.
 
-> 💡 We have pre-packaged all necessary `.init` and `.bddl` files required for evaluation. You can easily reproduce the experiment by following the steps below.
+> We have pre-packaged all necessary `.init` and `.bddl` files required for evaluation. You can easily reproduce the experiment by following the steps below.
 
 ---
 
-## 🚀 **Quick Start**
+## **Quick Start**
 
-### **1️⃣ Prepare the BDDL Files**
+### **1. Prepare the BDDL Files**
 
 Execute the following commands to set up the perturbed BDDL configuration:
 
@@ -625,11 +792,11 @@ mkdir -p libero_object_temp
 cp -r libero_object_temp_x0.1/* libero_object_temp/
 ```
 
-> 🧩 This creates the `libero_object_temp` directory containing all `.bddl` files required  for the **object position perturbation** experiment.
+> This creates the `libero_object_temp` directory containing all `.bddl` files required  for the **object position perturbation** experiment.
 
 ---
 
-### **2️⃣ Prepare the Initialization Files**
+### **2. Prepare the Initialization Files**
 
 Similarly, set up the initialization configuration directory:
 
@@ -644,13 +811,13 @@ mkdir -p libero_object_temp
 cp -r libero_object_temp_x0.1/* libero_object_temp/
 ```
 
-> 💡 Ensure that both `bddl_files` and `init_files` share consistent naming conventions (e.g., `libero_object_temp_x0.1` → `libero_object_temp`).
+> Ensure that both `bddl_files` and `init_files` share consistent naming conventions (e.g., `libero_object_temp_x0.1` → `libero_object_temp`).
 
 ---
 
-### **3️⃣ Configure Perturbation Intensity (Optional)**
+### **3. Configure Perturbation Intensity (Optional)**
 
-You can adjust the perturbation intensity based on your experimental requirements.  
+You can adjust the perturbation intensity based on your experimental requirements.
 The following levels are supported:
 
 | **Perturbation Axis** | **Available Levels** | **Description** |
@@ -668,11 +835,11 @@ cp -r libero_object_temp_x0.3/* libero_object_temp/
 cp -r libero_object_temp_y0.5/* libero_object_temp/
 ```
 
-> ⚙️ Modify the perturbation axis and magnitude to simulate different spatial displacement conditions.
+> Modify the perturbation axis and magnitude to simulate different spatial displacement conditions.
 
 ---
 
-### **4️⃣ Run the Evaluation**
+### **4. Run the Evaluation**
 
 Using **OpenVLA** as an example, execute the following command to perform the evaluation:
 
@@ -722,6 +889,6 @@ If you use LIBERO-PRO in your research, please cite both **LIBERO** and **LIBERO
 
 <div align="center">
 
-💡 *LIBERO-Pro — advancing the frontier of robust and fair generalization evaluation for Vision-Language-Action Models.*
+*LIBERO-Pro — advancing the frontier of robust and fair generalization evaluation for Vision-Language-Action Models.*
 
 </div>

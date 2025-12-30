@@ -5,9 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "libero-pro"
 version = "0.1.0"
-description = "LIBERO-Pro: Towards Robust and Fair Evaluation of Vision-Language-Action Models Beyond Memorization"
+description = "LIBERO-Pro simulation framework with Socket Server integration for remote policy evaluation"
 license = { text = "MIT" }
-requires-python = ">=3.10,<3.13"
+authors = [
+    { name = "Lorenzo Mazza", email = "lorenzo.mazza@nct-dresden.de" },
+]
+requires-python = ">=3.10"
 dependencies = [
     "hydra-core>=1.2.0",
     "numpy>=1.22.4",
