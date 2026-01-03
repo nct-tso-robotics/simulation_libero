@@ -54,7 +54,7 @@ This repository uses [uv](https://docs.astral.sh/uv/) for dependency management 
 2. **Create a conda/mamba environment and install uv:**
    ```bash
    conda create -n libero-pro python=3.10
-   conda activate libero-pro
+   mamba activate libero-pro
    pip install uv
    ```
 

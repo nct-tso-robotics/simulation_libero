@@ -111,21 +111,21 @@ TASK_MAX_STEPS_EXTENDED = {
 class EvalConfig:
     """Configuration for LIBERO evaluation."""
     # Task suite configuration
-    task_suite_name: str = "libero_spatial"
+    task_suite_name: str = "libero_object"
     evaluation_config_path: str = "./evaluation_config.yaml"
 
     # Server configuration
     num_steps_wait: int = 10
-    num_trials_per_task: int = 50
-    resolution: int = 256
-    ip_address: str = "127.0.0.1"
-    port: int = 5555
+    num_trials_per_task: int = 10
+    resolution: int = 128
+    ip_address: str = "0.0.0.0"
+    port: int = 5556
     compression_type: str = "raw"
 
     # Logging configuration
     run_id_note: Optional[str] = None
     local_log_dir: str = "./experiments/logs"
-    use_wandb: bool = False
+    use_wandb: bool = True
     wandb_project: str = "libero-eval"
     wandb_entity: str = ""
     seed: int = 7
