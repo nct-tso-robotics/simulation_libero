@@ -67,6 +67,7 @@ class LiberoServer(SocketServer):
         num_steps_wait: int = 10,
         max_workers: int = 4,
         compression_type: str = CompressionType.RAW.value,
+        seed: int = 0,
     ):
         """Initialize the LIBERO server.
 
@@ -78,12 +79,14 @@ class LiberoServer(SocketServer):
             num_steps_wait: Steps to wait for objects to stabilize
             max_workers: Max workers for thread pool
             compression_type: Compression method for images
+            seed: Random seed for environment
         """
         super().__init__(ip_address=ip_address, port=port, max_workers=max_workers)
         self.task_suite_name = task_suite_name
         self.resolution = resolution
         self.num_steps_wait = num_steps_wait
         self.compression_type = compression_type
+        self.seed = seed
         self.env: OffScreenRenderEnv | None = None
         self.current_obs: dict | None = None
         self.episode_state = EpisodeState()
@@ -143,7 +146,7 @@ class LiberoServer(SocketServer):
             "camera_widths": self.resolution,
         }
         self.env = OffScreenRenderEnv(**env_args)
-        self.env.seed(0)
+        self.env.seed(self.seed)  # IMPORTANT: seed seems to affect object positions even when using fixed initial state
         self.initial_states = self.task_suite.get_task_init_states(task_idx)
         self.episode_state.max_timesteps = TASK_SUITE_MAX_STEPS.get(
             self.task_suite_name, 300
