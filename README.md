@@ -116,49 +116,50 @@ For more details, see the original [LIBERO repository](https://github.com/Lifelo
 
 ## Running Evaluation
 
+The evaluation uses a **server-client architecture** where the simulation server and the policy client communicate over ZMQ. The server runs environments in **parallel batches** (`max_parallel_envs` at a time) for fast evaluation.
+
 ### Step 1: Start the LIBERO Simulation Server
 
 On the simulation machine, run:
 
 ```bash
-python run_libero_eval.py \
+python -m versatil_inference.run_evaluation \
     --task_suite_name libero_spatial \
-    --ip_address 0.0.0.0 \
-    --port 5555 \
-    --num_trials_per_task 50 \
-    --resolution 128
+    --num_trials_per_task 20 \
+    --max_parallel_envs 10 \
+    --resolution 128 \
+    --port 5556 \
+    --output_folder ./results
 ```
 
 **Configuration options:**
-- `--task_suite_name`: LIBERO benchmark suite (`libero_spatial`, `libero_object`, `libero_goal`, `libero_10`, `libero_90`)
+- `--task_suite_name`: LIBERO benchmark suite (`libero_spatial`, `libero_object`, `libero_goal`, `libero_10`, `libero_90`, `libero_all`)
 - `--evaluation_config_path`: Path to perturbation config (default: `./evaluation_config.yaml`)
-- `--ip_address`: IP to bind the server (use `0.0.0.0` for remote access)
-- `--port`: Port for ZMQ communication
-- `--num_trials_per_task`: Number of episodes per task
-- `--resolution`: Image resolution 
+- `--ip_address`: IP to bind the server (default: `0.0.0.0`)
+- `--port`: Port for ZMQ communication (default: `5556`)
+- `--num_trials_per_task`: Number of episodes per task (default: `10`)
+- `--max_parallel_envs`: Maximum environments to run in parallel per batch (default: `10`)
+- `--resolution`: Image resolution (default: `128`)
+- `--compression_type`: Image compression (`raw`, `jpeg`, `png`)
+- `--output_folder`: Directory for rollout videos, trajectory CSVs, and results. If not set, results are saved in the client's checkpoint directory under `rollouts/`
+- `--seed`: Random seed for reproducibility (default: `7`)
+- `--use_wandb`: Enable WandB logging (default: `True`)
 
-### Step 2: Run the Policy Client (Surg-IL)
+### Step 2: Run the Policy Client (VersatIL)
 
-On the policy machine (can be the same or different), use the Surg-IL library to run the policy client:
+On the policy machine (can be the same or different), use the VersatIL simulation client:
 
 ```bash
-python -m src.refactoring.endpoints.test \
-    --checkpoint-path "/path/to/checkpoints" \
-    --checkpoint-name "model.ckpt" \
-    --model-server-address <server_ip> \
-    --model-server-port 5555 \
-    --temporal-agg 1 \
-    --enable-logging 1
+python -m versatil.endpoints.test \
+    --checkpoint_path "/path/to/checkpoints" \
+    --checkpoint_name "best.ckpt" \
+    --server_address <server_ip> \
+    --server_port 5556
 ```
 
-The client will:
-1. Connect to the LIBERO server via ZMQ
-2. Receive observations (images + proprioception)
-3. Compute actions using the trained policy
-4. Send actions back to the simulation
-5. Log results and save rollout videos
+The client connects to the server, receives observations, runs inference, and sends actions back. Results (per-task success rates, rollout videos, trajectory CSVs) are saved on the server side.
 
-For the full Surg-IL client documentation, see: https://gitlab.com/nct_tso_public/surg-il
+For the full VersatIL client documentation, see: https://gitlab.com/nct_tso_public/versatil
 
 ## Perturbation Configuration
 
@@ -176,23 +177,26 @@ Note: `use_task` cannot be combined with other perturbations.
 
 ## Socket Communication Protocol
 
-The server exposes three routes via ZMQ:
+The server exposes three routes via ZMQ, matching the standardized VersatIL simulation protocol:
 
 | Route | Description |
 |-------|-------------|
-| `reset_episode` | Reset environment for a new episode |
-| `get_observation` | Get current observation without stepping |
-| `send_action` | Send 7D action and receive next observation |
+| `register_client` | Register a policy client (sends client name for output directory naming) |
+| `get_observation` | Get current observations for all active environments |
+| `send_action` | Send per-environment actions and step the simulation |
 
-**Action format:** 7D vector `[pos_delta(3), ori_delta(3), gripper(1)]`
+**Action format:** 7D vector per environment `[pos_delta(3), ori_delta(3), gripper(1)]`
 
-**Observation includes:**
-- `agentview_rgb`: Third-person camera image
-- `eye_in_hand_rgb`: Wrist camera image
-- `ee_pos`: End-effector position (3D)
-- `ee_ori`: End-effector orientation (axis-angle, 3D)
-- `gripper_states`: Gripper position (2D)
-- `language_instruction`: Task description string
+**Observation response includes:**
+- `status`: Server state (`WAITING_ACTION`, `CREATING_ENV`, `FINISHED`, `ERROR`)
+- `reset_environment_indices`: List of environments that were just reset (episode boundary)
+- `timestep`: Per-environment step counts
+- `agentview_rgb`: Third-person camera image (per environment)
+- `eye_in_hand_rgb`: Wrist camera image (per environment)
+- `ee_pos`: End-effector position (3D, per environment)
+- `ee_ori`: End-effector orientation (axis-angle, 3D, per environment)
+- `gripper_states`: Gripper position (2D, per environment)
+- `language_instruction`: Task description string (per environment)
 
 ---
 
