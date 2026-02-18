@@ -51,6 +51,7 @@ class LiberoServer(SocketServer):
         num_trials_per_task: int = 10,
         output_folder: str = "",
         max_parallel_envs: int = 10,
+        record_wrist_camera: bool = False,
     ):
         """Initialize the server and start environment creation in background.
 
@@ -65,6 +66,7 @@ class LiberoServer(SocketServer):
             num_trials_per_task: Number of evaluation episodes per task.
             output_folder: Directory for rollout recordings.
             max_parallel_envs: Maximum environments running simultaneously.
+            record_wrist_camera: Whether to record wrist camera video.
         """
         super().__init__(ip_address=ip_address, port=port)
         self.resolution = resolution
@@ -82,6 +84,7 @@ class LiberoServer(SocketServer):
             num_trials_per_task=self.num_trials_per_task,
             output_folder=self.output_folder,
             max_parallel_envs=max_parallel_envs,
+            record_wrist_camera=record_wrist_camera,
         )
         self._register_routes()
         thread = threading.Thread(
