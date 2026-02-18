@@ -70,6 +70,7 @@ class EvalConfig:
     wandb_entity: str = ""
     seed: int = 7
     max_parallel_envs: int = 10
+    record_wrist_camera: bool = False
 
 
 def setup_perturbations(config: EvalConfig) -> str:
@@ -233,6 +234,7 @@ def run_evaluation(config: EvalConfig) -> None:
         seed=config.seed,
         compression_type=config.compression_type,
         max_parallel_envs=config.max_parallel_envs,
+        record_wrist_camera=config.record_wrist_camera,
     )
     print(
         f"Task suite: {task_suite_name}, "
