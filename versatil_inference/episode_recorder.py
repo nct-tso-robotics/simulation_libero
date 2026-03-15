@@ -31,17 +31,22 @@ class EpisodeRecorder:
         language_instruction: str,
         trajectory_columns: list[str],
         frame_skip: int = 3,
+        record_wrist_camera: bool = False,
     ):
         self.safe_instruction = (
             language_instruction.replace(" ", "_").replace("/", "-")
         )
         self.trajectory_columns = trajectory_columns
         self.frame_skip = frame_skip
+        self.record_wrist_camera = record_wrist_camera
         self.step_counter = 0
         self.frames_buffer: list[np.ndarray] = []
+        self.wrist_frames_buffer: list[np.ndarray] = []
         self.trajectory_rows: list[dict[str, float]] = []
         self.writer: cv2.VideoWriter | None = None
+        self.wrist_writer: cv2.VideoWriter | None = None
         self.filepath: Path | None = None
+        self.wrist_filepath: Path | None = None
         self.environment_id = environment_id
         self.num_saves = 0
 
@@ -63,6 +68,24 @@ class EpisodeRecorder:
             str(self.filepath), fourcc, self.VIDEO_FPS, (width, height)
         )
 
+    def _init_wrist_writer(self, output_directory: Path) -> None:
+        """Initialize the wrist camera video writer.
+
+        Args:
+            output_directory: Directory to write the video file to.
+        """
+        output_directory.mkdir(parents=True, exist_ok=True)
+        filename = (
+            f"{self.environment_id}_unknown_wrist_"
+            f"{self.safe_instruction}_{self.num_saves}.avi"
+        )
+        self.wrist_filepath = output_directory / filename
+        height, width = self.wrist_frames_buffer[0].shape[:2]
+        fourcc = cv2.VideoWriter_fourcc(*VideoCodec.MJPG.value)
+        self.wrist_writer = cv2.VideoWriter(
+            str(self.wrist_filepath), fourcc, self.VIDEO_FPS, (width, height)
+        )
+
     def _flush_buffer(self, output_directory: Path) -> None:
         """Write buffered frames to the video file.
 
@@ -79,6 +102,15 @@ class EpisodeRecorder:
             bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             self.writer.write(bgr)
         self.frames_buffer = []
+        if self.record_wrist_camera and self.wrist_frames_buffer:
+            if self.wrist_writer is None:
+                self._init_wrist_writer(output_directory)
+            for frame in self.wrist_frames_buffer:
+                if frame.dtype != np.uint8:
+                    frame = (frame * 255).astype(np.uint8)
+                bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                self.wrist_writer.write(bgr)
+            self.wrist_frames_buffer = []
 
     def add_observation(
         self,
@@ -86,6 +118,7 @@ class EpisodeRecorder:
         trajectory_row: dict[str, float],
         reward: float,
         output_directory: Path,
+        wrist_frame: np.ndarray | None = None,
     ) -> None:
         """Buffer a frame and trajectory row. Flushes video when buffer is full.
 
@@ -94,11 +127,14 @@ class EpisodeRecorder:
             trajectory_row: Dict of trajectory column values.
             reward: Reward for this step.
             output_directory: Directory to write the video file to on flush.
+            wrist_frame: Optional wrist camera frame to record.
         """
         trajectory_row["reward"] = reward
         self.trajectory_rows.append(trajectory_row)
         if self.step_counter % self.frame_skip == 0:
             self.frames_buffer.append(frame)
+            if self.record_wrist_camera and wrist_frame is not None:
+                self.wrist_frames_buffer.append(wrist_frame)
             if len(self.frames_buffer) >= self.BUFFER_SIZE:
                 self._flush_buffer(output_directory)
         self.step_counter += 1
@@ -108,9 +144,14 @@ class EpisodeRecorder:
         if self.writer is not None:
             self.writer.release()
             self.writer = None
+        if self.wrist_writer is not None:
+            self.wrist_writer.release()
+            self.wrist_writer = None
         self.frames_buffer = []
+        self.wrist_frames_buffer = []
         self.trajectory_rows = []
         self.filepath = None
+        self.wrist_filepath = None
         self.step_counter = 0
 
     def save(self, was_success: bool, output_directory: Path) -> None:
@@ -133,6 +174,12 @@ class EpisodeRecorder:
         )
         new_video_path = output_directory / f"{file_prefix}.avi"
         self.filepath.rename(new_video_path)
+        if self.wrist_writer is not None:
+            self.wrist_writer.release()
+            self.wrist_writer = None
+            wrist_video_path = output_directory / f"{file_prefix}_wrist.avi"
+            self.wrist_filepath.rename(wrist_video_path)
+            self.wrist_filepath = None
         csv_columns = self.trajectory_columns + ["reward"]
         csv_path = output_directory / f"{file_prefix}_trajectory.csv"
         with open(csv_path, "w", newline="") as file:

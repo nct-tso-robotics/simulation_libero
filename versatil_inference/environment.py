@@ -82,6 +82,7 @@ class Environment:
         num_trials_per_task: int,
         output_folder: str,
         max_parallel_envs: int = 10,
+        record_wrist_camera: bool = False,
     ):
         self.task_suite_name = task_suite_name
         self.seed = seed
@@ -91,6 +92,7 @@ class Environment:
         self.output_folder = output_folder
         self.max_parallel_envs = max_parallel_envs
         self.current_status = ServerStatus.CREATING_ENV.value
+        self.record_wrist_camera = record_wrist_camera
         self.client_name = DEFAULT_CLIENT_NAME
         self._rollout_date = datetime.datetime.now().strftime(
             "%Y-%m-%d_%H-%M-%S"
@@ -262,6 +264,7 @@ class Environment:
                 environment_id=self.suite_name_per_task[global_index],
                 language_instruction=self.task_descriptions[global_index],
                 trajectory_columns=self.trajectory_columns,
+                record_wrist_camera=self.record_wrist_camera,
             )
         self.vectorized_environment.reset()
         initial_states = [
@@ -301,6 +304,12 @@ class Environment:
                     LiberoGymKey.AGENTVIEW_IMAGE.value
                 ]
                 frame = np.ascontiguousarray(frame[::-1, ::-1])
+                wrist_frame = None
+                if self.record_wrist_camera:
+                    wrist_frame = observations[local_index][
+                        LiberoGymKey.EYE_IN_HAND_IMAGE.value
+                    ]
+                    wrist_frame = np.ascontiguousarray(wrist_frame[::-1, ::-1])
                 self.recorders[global_index].add_observation(
                     frame=frame,
                     trajectory_row=self._build_trajectory_row(
@@ -308,6 +317,7 @@ class Environment:
                     ),
                     reward=0.0,
                     output_directory=self.rollout_directory,
+                    wrist_frame=wrist_frame,
                 )
         self.latest_observation = self._unbatch_observation(observations)
 
@@ -453,6 +463,12 @@ class Environment:
                     LiberoGymKey.AGENTVIEW_IMAGE.value
                 ]
                 frame = np.ascontiguousarray(frame[::-1, ::-1])
+                wrist_frame = None
+                if self.record_wrist_camera:
+                    wrist_frame = observations[local_index][
+                        LiberoGymKey.EYE_IN_HAND_IMAGE.value
+                    ]
+                    wrist_frame = np.ascontiguousarray(wrist_frame[::-1, ::-1])
                 self.recorders[global_index].add_observation(
                     frame=frame,
                     trajectory_row=self._build_trajectory_row(
@@ -460,6 +476,7 @@ class Environment:
                     ),
                     reward=0.0,
                     output_directory=rollout_dir,
+                    wrist_frame=wrist_frame,
                 )
                 if self.wait_steps_remaining[global_index] == 0:
                     self.recently_reset_indices.append(local_index)
@@ -469,6 +486,12 @@ class Environment:
                 LiberoGymKey.AGENTVIEW_IMAGE.value
             ]
             frame = np.ascontiguousarray(frame[::-1, ::-1])
+            wrist_frame = None
+            if self.record_wrist_camera:
+                wrist_frame = observations[local_index][
+                    LiberoGymKey.EYE_IN_HAND_IMAGE.value
+                ]
+                wrist_frame = np.ascontiguousarray(wrist_frame[::-1, ::-1])
             self.recorders[global_index].add_observation(
                 frame=frame,
                 trajectory_row=self._build_trajectory_row(
@@ -476,6 +499,7 @@ class Environment:
                 ),
                 reward=float(rewards[local_index]),
                 output_directory=rollout_dir,
+                wrist_frame=wrist_frame,
             )
             episode_success = bool(dones[local_index])
             episode_done = (
