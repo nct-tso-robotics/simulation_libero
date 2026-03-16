@@ -8,7 +8,20 @@ version = "0.1.0"
 description = "LIBERO-Pro simulation framework with Socket Server integration for remote policy evaluation"
 license = { text = "MIT" }
 authors = [
+    { name = "Xueyang Zhou" },
+    { name = "Yangming Xu" },
+    { name = "Guiyao Tie" },
+    { name = "Yongchao Chen" },
+    { name = "Guowen Zhang" },
+    { name = "Duanfeng Chu" },
+    { name = "Pan Zhou" },
+    { name = "Lichao Sun" },
+    { name = "Bo Liu" },
+    { name = "Yifeng Zhu" },
+]
+maintainers = [
     { name = "Lorenzo Mazza", email = "lorenzo.mazza@nct-dresden.de" },
+    { name = "Ariel Rodriguez", email = "ariel.rodriguezjimenez@nct-dresden.de" },
 ]
 requires-python = ">=3.10"
 dependencies = [

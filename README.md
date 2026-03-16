@@ -1,6 +1,8 @@
 # LIBERO-Pro with Socket Server Integration
 
-This repository integrates the **LIBERO-Pro** simulation framework with a ZMQ-based Socket Server that enables remote policy evaluation. The server can be used together with a Policy Client from the [Surg-IL library](https://gitlab.com/nct_tso_public/surg-il), allowing the policy learning library to remain independent of the simulation engine.
+> Fork of [LIBERO-PRO](https://github.com/Zxy-MLlab/LIBERO-PRO) (Zhou et al., 2025), built on [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO) (Liu et al., 2023).
+
+This repository integrates the **LIBERO-Pro** simulation framework with a ZMQ-based Socket Server that enables remote policy evaluation. The server can be used together with a Policy Client from the [VersatIL library](https://gitlab.com/nct_tso_public/versatil), allowing the policy learning library to remain independent of the simulation engine.
 
 ## Architecture Overview
 
