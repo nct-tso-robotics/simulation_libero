@@ -22,7 +22,7 @@ from tso_robotics_sockets import (
     compress_array,
 )
 from versatil_constants.libero import LiberoCamera, LiberoProprioKey
-from versatil_constants.shared import ObsKey
+from versatil_constants.shared import ActionComponent, ObsKey
 
 from versatil_inference.environment import Environment
 from versatil_inference.socket_flags import DEFAULT_CLIENT_NAME, TaskSuiteName
@@ -273,11 +273,34 @@ class LiberoServer(SocketServer):
         raw_actions = request_data.get(
             InferenceRequestKey.ACTIONS.value, {}
         )
-        actions = {int(key): value for key, value in raw_actions.items()}
+        actions = {
+            int(key): self._flatten_action(structured_action=value)
+            for key, value in raw_actions.items()
+        }
         environment.step(actions=actions)
         return True, {
             TransportKey.STATUS.value: environment.current_status,
         }
+
+    @staticmethod
+    def _flatten_action(structured_action: dict[str, list[float]]) -> list[float]:
+        """Flatten a structured action dict into the gym action format.
+
+        Args:
+            structured_action: Dict mapping ActionComponent values to action arrays.
+
+        Returns:
+            Flat action list in gym order: position, orientation, gripper.
+        """
+        flat: list[float] = []
+        for component in (
+            ActionComponent.POSITION.value,
+            ActionComponent.ORIENTATION.value,
+            ActionComponent.GRIPPER.value,
+        ):
+            if component in structured_action:
+                flat.extend(structured_action[component])
+        return flat
 
     def handle_request(self, request_data: dict) -> tuple[bool, dict]:
         """Dispatch request to the appropriate handler based on route."""
