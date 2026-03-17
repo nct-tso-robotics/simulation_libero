@@ -8,7 +8,20 @@ version = "0.1.0"
 description = "LIBERO-Pro simulation framework with Socket Server integration for remote policy evaluation"
 license = { text = "MIT" }
 authors = [
+    { name = "Xueyang Zhou" },
+    { name = "Yangming Xu" },
+    { name = "Guiyao Tie" },
+    { name = "Yongchao Chen" },
+    { name = "Guowen Zhang" },
+    { name = "Duanfeng Chu" },
+    { name = "Pan Zhou" },
+    { name = "Lichao Sun" },
+    { name = "Bo Liu" },
+    { name = "Yifeng Zhu" },
+]
+maintainers = [
     { name = "Lorenzo Mazza", email = "lorenzo.mazza@nct-dresden.de" },
+    { name = "Ariel Rodriguez", email = "ariel.rodriguezjimenez@nct-dresden.de" },
 ]
 requires-python = ">=3.10"
 dependencies = [
@@ -33,7 +46,8 @@ dependencies = [
     "torch==2.4.0",
     "torchaudio==2.4.0",
     "torchvision==0.19.0",
-    "imitation-learning-toolkit",
+    "tso-robotics-sockets",
+    "versatil-constants",
 ]
 
 [project.optional-dependencies]
@@ -58,7 +72,6 @@ explicit = true
 torch = { index = "pytorch" }
 torchaudio = { index = "pytorch" }
 torchvision = { index = "pytorch" }
-imitation-learning-toolkit = { git = "https://gitlab.com/nct_tso_public/imitation-learning-toolkit.git" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["libero", "scripts"]

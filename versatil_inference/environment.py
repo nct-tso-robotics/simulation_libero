@@ -12,15 +12,16 @@ from libero.libero.envs import OffScreenRenderEnv
 from libero.libero.envs.venv import DummyVectorEnv, SubprocVectorEnv
 
 from versatil_inference.episode_recorder import EpisodeRecorder
+from tso_robotics_sockets import InferenceResponseKey, ServerStatus
+from versatil_constants.libero import LiberoCamera, LiberoProprioKey
+from versatil_constants.shared import ObsKey
+
 from versatil_inference.socket_flags import (
     DEFAULT_CLIENT_NAME,
     DEFAULT_MAX_TIMESTEPS,
     LIBERO_ALL_SUITES,
     TASK_SUITE_MAX_STEPS,
     LiberoGymKey,
-    LiberoObservationKey,
-    LiberoResponseKey,
-    LiberoStatus,
     LiberoTrajectoryColumn,
     TaskSuiteName,
 )
@@ -90,8 +91,8 @@ class Environment:
         self.num_trials_per_task = num_trials_per_task
         self.output_folder = output_folder
         self.max_parallel_envs = max_parallel_envs
+        self.current_status = ServerStatus.CREATING_ENV.value
         self.record_wrist_camera = record_wrist_camera
-        self.current_status = LiberoStatus.CREATING_ENV.value
         self.client_name = DEFAULT_CLIENT_NAME
         self._rollout_date = datetime.datetime.now().strftime(
             "%Y-%m-%d_%H-%M-%S"
@@ -226,7 +227,7 @@ class Environment:
         batch_size = min(self.max_parallel_envs, self.num_envs)
         self._batch_global_indices = list(range(batch_size))
         self._create_batch_vec_env()
-        self.current_status = LiberoStatus.WAITING_ACTION.value
+        self.current_status = ServerStatus.WAITING_ACTION.value
 
     def _create_batch_vec_env(self) -> None:
         """Create a SubprocVectorEnv for the current batch of tasks."""
@@ -347,31 +348,31 @@ class Environment:
             per_env = {}
             agentview = env_obs.get(LiberoGymKey.AGENTVIEW_IMAGE.value)
             if agentview is not None:
-                per_env[LiberoObservationKey.AGENTVIEW.value] = agentview
+                per_env[LiberoCamera.AGENTVIEW.value] = agentview
             eye_in_hand = env_obs.get(
                 LiberoGymKey.EYE_IN_HAND_IMAGE.value
             )
             if eye_in_hand is not None:
-                per_env[LiberoObservationKey.EYE_IN_HAND.value] = (
+                per_env[LiberoCamera.EYE_IN_HAND.value] = (
                     eye_in_hand
                 )
             ee_pos = env_obs.get(LiberoGymKey.EE_POS.value)
             if ee_pos is not None:
-                per_env[LiberoObservationKey.EE_POS_ACTION.value] = ee_pos
+                per_env[LiberoProprioKey.EE_POS_ACTION.value] = ee_pos
             ee_quat = env_obs.get(LiberoGymKey.EE_QUAT.value)
             if ee_quat is not None:
-                per_env[LiberoObservationKey.EE_ORI_ACTION.value] = (
+                per_env[LiberoProprioKey.EE_ORI_ACTION.value] = (
                     quat_to_axis_angle(ee_quat)
                 )
             gripper = env_obs.get(LiberoGymKey.GRIPPER_QPOS.value)
             if gripper is not None:
-                per_env[LiberoObservationKey.GRIPPER_STATE_ACTION.value] = (
+                per_env[LiberoProprioKey.GRIPPER_STATE_ACTION.value] = (
                     gripper
                 )
-            per_env[LiberoObservationKey.LANGUAGE_INSTRUCTION.value] = (
+            per_env[ObsKey.LANGUAGE.value] = (
                 self.task_descriptions[global_index]
             )
-            per_env[LiberoResponseKey.TIMESTEP.value] = (
+            per_env[InferenceResponseKey.TIMESTEP.value] = (
                 self.steps_counts[global_index]
             )
             result[local_index] = per_env
@@ -419,7 +420,7 @@ class Environment:
         Args:
             actions: Mapping from batch-local index to action list.
         """
-        if self.current_status == LiberoStatus.FINISHED.value:
+        if self.current_status == ServerStatus.FINISHED.value:
             return
         batch_size = len(self._batch_global_indices)
         # Inactive envs accumulate NO_OP steps after finishing all trials.
@@ -541,14 +542,14 @@ class Environment:
             for global_index in self._batch_global_indices
         )
         if batch_active:
-            self.current_status = LiberoStatus.WAITING_ACTION.value
+            self.current_status = ServerStatus.WAITING_ACTION.value
         else:
             has_more = self._advance_to_next_batch()
             if has_more:
-                self.current_status = LiberoStatus.WAITING_ACTION.value
+                self.current_status = ServerStatus.WAITING_ACTION.value
             else:
                 self._write_results_csv()
-                self.current_status = LiberoStatus.FINISHED.value
+                self.current_status = ServerStatus.FINISHED.value
 
     def _reset_single_environment(
         self,

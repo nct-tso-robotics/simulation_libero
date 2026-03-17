@@ -1,59 +1,9 @@
-"""Socket communication flags for Libero simulation server."""
+"""Project-specific constants for Libero simulation server."""
 
 from enum import Enum
 
 
 DEFAULT_CLIENT_NAME = "unknown"
-
-
-class LiberoRoute(str, Enum):
-    """Route names for the Libero server."""
-
-    GET_OBSERVATION = "get_observation"
-    SEND_ACTION = "send_action"
-    REGISTER_CLIENT = "register_client"
-
-
-class LiberoStatus(str, Enum):
-    """Status values in server responses."""
-
-    FINISHED = "FINISHED"
-    ERROR = "ERROR"
-    WAITING_ACTION = "WAITING_ACTION"
-    CREATING_ENV = "CREATING_ENV"
-    PROCESSING = "PROCESSING"
-
-
-class LiberoResponseKey(str, Enum):
-    """Response keys in server responses."""
-
-    STATUS = "status"
-    ERROR_MSG = "error_msg"
-    RESET_ENVIRONMENT_INDICES = "reset_environment_indices"
-    TIMESTEP = "timestep"
-    IMAGE_HEIGHT = "image_height"
-    IMAGE_WIDTH = "image_width"
-
-
-class LiberoRequestKey(str, Enum):
-    """Request keys in client requests."""
-
-    ROUTE_NAME = "route_name"
-    REQUESTED_KEYS = "requested_keys"
-    ACTIONS = "actions"
-    CLIENT_NAME = "client_name"
-    COMPRESSION_TYPE = "compression_type"
-
-
-class LiberoObservationKey(str, Enum):
-    """Observation keys matching VersatIL metadata."""
-
-    AGENTVIEW = "agentview_rgb"
-    EYE_IN_HAND = "eye_in_hand_rgb"
-    EE_POS_ACTION = "ee_pos_action"
-    EE_ORI_ACTION = "ee_ori_action"
-    GRIPPER_STATE_ACTION = "gripper_state_action"
-    LANGUAGE_INSTRUCTION = "language_instruction"
 
 
 class LiberoGymKey(str, Enum):
@@ -89,7 +39,7 @@ class TaskSuiteName(str, Enum):
     LIBERO_GOAL = "libero_goal"
     LIBERO_10 = "libero_10"
     LIBERO_90 = "libero_90"
-    LIBERO_ALL = "libero_all" 
+    LIBERO_ALL = "libero_all"
 
 
 LIBERO_ALL_SUITES: list[str] = [

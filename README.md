@@ -1,6 +1,8 @@
 # LIBERO-Pro with Socket Server Integration
 
-This repository integrates the **LIBERO-Pro** simulation framework with a ZMQ-based Socket Server that enables remote policy evaluation. The server can be used together with a Policy Client from the [Surg-IL library](https://gitlab.com/nct_tso_public/surg-il), allowing the policy learning library to remain independent of the simulation engine.
+> Fork of [LIBERO-PRO](https://github.com/Zxy-MLlab/LIBERO-PRO) (Zhou et al., 2025), built on [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO) (Liu et al., 2023).
+
+This repository integrates the **LIBERO-Pro** simulation framework with a ZMQ-based Socket Server that enables remote policy evaluation. The server can be used together with a Policy Client from the [VersatIL library](https://gitlab.com/nct_tso_public/versatil), allowing the policy learning library to remain independent of the simulation engine.
 
 ## Architecture Overview
 
@@ -49,8 +51,6 @@ This repository uses [uv](https://docs.astral.sh/uv/) for dependency management 
    ```bash
    git config --global credential.helper store
    ```
-   Then authenticate once to GitLab (e.g., by cloning a private repo). This stores credentials so `uv` can fetch the `imitation-learning-toolkit` dependency.
-
 2. **Create a conda/mamba environment and install uv:**
    ```bash
    conda create -n libero-pro python=3.10
@@ -63,19 +63,9 @@ This repository uses [uv](https://docs.astral.sh/uv/) for dependency management 
    UV_PROJECT_ENVIRONMENT=$CONDA_PREFIX uv sync
    ```
 
-### Private Dependencies
+### Communication Dependencies
 
-This project depends on [imitation-learning-toolkit](https://gitlab.com/nct_tso_public/imitation-learning-toolkit), a shared library for socket communication. The dependency is specified in `pyproject.toml` as a git source:
-
-```toml
-[tool.uv.sources]
-imitation-learning-toolkit = { git = "https://gitlab.com/nct_tso_public/imitation-learning-toolkit.git" }
-```
-
-If you need a specific version/commit, you can pin it:
-```toml
-imitation-learning-toolkit = { git = "https://gitlab.com/nct_tso_public/imitation-learning-toolkit.git", rev = "main" }
-```
+This project uses [tso-robotics-sockets](https://github.com/Lorenzo-Mazza/tso_robotics_sockets) for ZMQ socket communication and [versatil-constants](https://github.com/Lorenzo-Mazza/versatil_constants) for shared domain constants. Both are installed automatically via `pyproject.toml`.
 
 ## Downloading LIBERO Datasets
 
