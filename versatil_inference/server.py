@@ -216,38 +216,38 @@ class LiberoServer(SocketServer):
                     response[LiberoCamera.EYE_IN_HAND.value] = (
                         compressed_images
                     )
-                case LiberoProprioKey.EE_POS_ACTION.value:
+                case LiberoProprioKey.EE_POS.value:
                     positions = {}
                     for environment_index in latest_observation:
                         ee_pos = latest_observation[environment_index].get(
-                            LiberoProprioKey.EE_POS_ACTION.value
+                            LiberoProprioKey.EE_POS.value
                         )
                         if ee_pos is not None:
                             positions[environment_index] = ee_pos.tolist()
-                    response[LiberoProprioKey.EE_POS_ACTION.value] = (
+                    response[LiberoProprioKey.EE_POS.value] = (
                         positions
                     )
-                case LiberoProprioKey.EE_ORI_ACTION.value:
+                case LiberoProprioKey.EE_ORI.value:
                     orientations = {}
                     for environment_index in latest_observation:
                         ee_ori = latest_observation[environment_index].get(
-                            LiberoProprioKey.EE_ORI_ACTION.value
+                            LiberoProprioKey.EE_ORI.value
                         )
                         if ee_ori is not None:
                             orientations[environment_index] = ee_ori.tolist()
-                    response[LiberoProprioKey.EE_ORI_ACTION.value] = (
+                    response[LiberoProprioKey.EE_ORI.value] = (
                         orientations
                     )
-                case LiberoProprioKey.GRIPPER_STATE_ACTION.value:
+                case LiberoProprioKey.GRIPPER_STATE.value:
                     grippers = {}
                     for environment_index in latest_observation:
                         gripper = latest_observation[environment_index].get(
-                            LiberoProprioKey.GRIPPER_STATE_ACTION.value
+                            LiberoProprioKey.GRIPPER_STATE.value
                         )
                         if gripper is not None:
                             grippers[environment_index] = gripper.tolist()
                     response[
-                        LiberoProprioKey.GRIPPER_STATE_ACTION.value
+                        LiberoProprioKey.GRIPPER_STATE.value
                     ] = grippers
                 case ObsKey.LANGUAGE.value:
                     language_instructions = {}
