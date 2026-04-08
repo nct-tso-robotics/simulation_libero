@@ -358,15 +358,15 @@ class Environment:
                 )
             ee_pos = env_obs.get(LiberoGymKey.EE_POS.value)
             if ee_pos is not None:
-                per_env[LiberoProprioKey.EE_POS_ACTION.value] = ee_pos
+                per_env[LiberoProprioKey.EE_POS.value] = ee_pos
             ee_quat = env_obs.get(LiberoGymKey.EE_QUAT.value)
             if ee_quat is not None:
-                per_env[LiberoProprioKey.EE_ORI_ACTION.value] = (
+                per_env[LiberoProprioKey.EE_ORI.value] = (
                     quat_to_axis_angle(ee_quat)
                 )
             gripper = env_obs.get(LiberoGymKey.GRIPPER_QPOS.value)
             if gripper is not None:
-                per_env[LiberoProprioKey.GRIPPER_STATE_ACTION.value] = (
+                per_env[LiberoProprioKey.GRIPPER_STATE.value] = (
                     gripper
                 )
             per_env[ObsKey.LANGUAGE.value] = (
