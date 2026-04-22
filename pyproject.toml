@@ -47,7 +47,7 @@ dependencies = [
     "torchaudio==2.4.0",
     "torchvision==0.19.0",
     "tso-robotics-sockets",
-    "versatil-constants",
+    "versatil-constants>=0.2.0",
 ]
 
 [project.optional-dependencies]
