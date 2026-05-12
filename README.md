@@ -2,7 +2,7 @@
 
 > Fork of [LIBERO-PRO](https://github.com/Zxy-MLlab/LIBERO-PRO) (Zhou et al., 2025), built on [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO) (Liu et al., 2023).
 
-This repository integrates the **LIBERO-Pro** simulation framework with a ZMQ-based Socket Server that enables remote policy evaluation. The server can be used together with a Policy Client from the [VersatIL library](https://gitlab.com/nct_tso_public/versatil), allowing the policy learning library to remain independent of the simulation engine.
+This repository integrates the **LIBERO-Pro** simulation framework with a ZMQ-based Socket Server that enables remote policy evaluation. The server can be used together with a Policy Client from the VersatIL library, allowing the policy learning library to remain independent of the simulation engine.
 
 ## Architecture Overview
 
@@ -10,7 +10,7 @@ This repository integrates the **LIBERO-Pro** simulation framework with a ZMQ-ba
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           Machine A (GPU Server)                            │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                     Surg-IL Policy Client                             │  │
+│  │                     VersatIL Policy Client                            │  │
 │  │  - Loads trained checkpoint                                           │  │
 │  │  - Receives observations via ZMQ                                      │  │
 │  │  - Computes actions using the policy                                  │  │
@@ -42,25 +42,20 @@ This repository uses [uv](https://docs.astral.sh/uv/) for dependency management 
 
 - Python 3.10+
 - CUDA 12.4 (for GPU support)
-- Conda/Mamba (for environment management)
-- Git credentials for private GitLab repositories (see below)
+- Mamba (for environment management)
 
 ### Setup Steps
 
-1. **Configure git credentials** (required for private dependencies):
+1. **Create a mamba environment and install uv:**
    ```bash
-   git config --global credential.helper store
-   ```
-2. **Create a conda/mamba environment and install uv:**
-   ```bash
-   conda create -n libero-pro python=3.10
+   mamba create -n libero-pro python=3.10
    mamba activate libero-pro
    pip install uv
    ```
 
-3. **Install dependencies using uv with the conda prefix:**
+2. **Install dependencies using uv inside the mamba environment:**
    ```bash
-   UV_PROJECT_ENVIRONMENT=$CONDA_PREFIX uv sync
+   UV_PROJECT_ENVIRONMENT=$MAMBA_ROOT_PREFIX/envs/libero-pro uv sync
    ```
 
 ### Communication Dependencies
@@ -149,7 +144,7 @@ python -m versatil.endpoints.test \
 
 The client connects to the server, receives observations, runs inference, and sends actions back. Results (per-task success rates, rollout videos, trajectory CSVs) are saved on the server side.
 
-For the full VersatIL client documentation, see: https://gitlab.com/nct_tso_public/versatil
+For the full VersatIL client documentation, see the VersatIL project.
 
 ## Perturbation Configuration
 

@@ -1,0 +1,12 @@
+LIBERO-Pro simulation server
+
+This repository contains a VersatIL socket-server integration for LIBERO-Pro.
+
+Upstream components:
+- LIBERO-Pro: https://github.com/Zxy-MLlab/LIBERO-PRO
+- LIBERO: https://github.com/Lifelong-Robot-Learning/LIBERO
+- Assets and datasets from LIBERO-Pro / LIBERO retain their original upstream
+  terms and citation requirements.
+
+The repository-level license applies to wrapper/adaptation code contributed
+here unless a file-level or vendored upstream license states otherwise.
