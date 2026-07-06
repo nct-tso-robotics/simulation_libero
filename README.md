@@ -135,16 +135,16 @@ python -m versatil_inference.run_evaluation \
 On the policy machine (can be the same or different), use the VersatIL simulation client:
 
 ```bash
-python -m versatil.endpoints.test \
-    --checkpoint_path "/path/to/checkpoints" \
-    --checkpoint_name "best.ckpt" \
-    --server_address <server_ip> \
-    --server_port 5556
+python -m versatil.endpoints.deploy \
+    checkpoint_path=/path/to/checkpoint_dir \
+    checkpoint_name=best.ckpt \
+    client.model_server_address=<server_ip> \
+    client.model_server_port=5556
 ```
 
 The client connects to the server, receives observations, runs inference, and sends actions back. Results (per-task success rates, rollout videos, trajectory CSVs) are saved on the server side.
 
-For the full VersatIL client documentation, see the VersatIL project.
+For the full client documentation (all overrides, temporal aggregation, compressed checkpoints), see the [VersatIL simulation evaluation tutorial](https://lorenzo-mazza.github.io/VersatIL/getting-started/inference/).
 
 ## Perturbation Configuration
 
