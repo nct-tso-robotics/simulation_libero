@@ -64,16 +64,23 @@ This project uses [tso-robotics-sockets](https://github.com/Lorenzo-Mazza/tso_ro
 
 ## Downloading LIBERO Datasets
 
-For training your models on LIBERO, you need to download the LIBERO demonstration datasets.
+LIBERO demonstrations are commonly used in two different formats. Choose the
+format that matches your training config; the two layouts are not
+interchangeable.
 
-### Option 1: Using the download script
+| Format | Use it for | Download location |
+|---|---|---|
+| Original HDF5 | Native LIBERO / robomimic workflows and VersatIL `libero_hdf5` configs. Files are stored as `*.hdf5` under `libero/datasets/`. | This repository's `benchmark_scripts/download_libero_datasets.py` script, or the HDF5 mirror at <https://huggingface.co/datasets/yifengzhu-hf/LIBERO-datasets>. |
+| LeRobot | VersatIL `libero_lerobot` configs, including the OpenVLA-filtered 256x256 demonstrations from <https://huggingface.co/datasets/lerobot/libero>. | Follow the VersatIL repository's [`libero_lerobot` dataset instructions](https://github.com/Lorenzo-Mazza/VersatIL#available-benchmarks) and set `VERSATIL_LIBERO_LEROBOT_DIR` as described in its [environment configuration](https://github.com/Lorenzo-Mazza/VersatIL#environment-configuration). This repository's HDF5 downloader does not download LeRobot data. |
 
-Download all datasets:
+### Original HDF5 datasets
+
+Download all HDF5 datasets:
 ```bash
 python benchmark_scripts/download_libero_datasets.py
 ```
 
-Or download specific datasets:
+Or download a specific HDF5 dataset:
 ```bash
 python benchmark_scripts/download_libero_datasets.py --datasets libero_spatial
 python benchmark_scripts/download_libero_datasets.py --datasets libero_object
@@ -81,23 +88,33 @@ python benchmark_scripts/download_libero_datasets.py --datasets libero_goal
 python benchmark_scripts/download_libero_datasets.py --datasets libero_10
 ```
 
-### Option 2: Using HuggingFace
-
-Download from HuggingFace (alternative mirror):
+To use the Hugging Face HDF5 mirror instead of the original links:
 ```bash
 python benchmark_scripts/download_libero_datasets.py --use-huggingface
 ```
 
-Or for specific datasets:
+Or for a specific HDF5 dataset from the mirror:
 ```bash
 python benchmark_scripts/download_libero_datasets.py --datasets libero_spatial --use-huggingface
 ```
 
-The datasets are also available directly at: https://huggingface.co/datasets/yifengzhu-hf/LIBERO-datasets
+HDF5 datasets are stored in `libero/datasets/` by default.
 
-Datasets will be stored in `libero/datasets/` by default.
+### LeRobot dataset
 
-For more details, see the original [LIBERO repository](https://github.com/Lifelong-Robot-Learning/LIBERO).
+For VersatIL training with `libero_lerobot` configs, use the LeRobot-format
+LIBERO dataset instead of the HDF5 files. Download and path setup are documented
+in the [VersatIL repository](https://github.com/Lorenzo-Mazza/VersatIL):
+
+1. Download the dataset from <https://huggingface.co/datasets/lerobot/libero>
+   following the VersatIL setup instructions.
+2. Set `VERSATIL_LIBERO_LEROBOT_DIR=/path/to/libero_lerobot` in the VersatIL
+   `.env` file.
+3. Run a VersatIL `end_to_end_training_runs/libero_lerobot/...` config. VersatIL
+   creates its Zarr cache from the raw LeRobot dataset on first use.
+
+For more details on the original HDF5 data, see the original
+[LIBERO repository](https://github.com/Lifelong-Robot-Learning/LIBERO).
 
 ## Running Evaluation
 
