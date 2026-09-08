@@ -36,26 +36,41 @@ This repository integrates the **LIBERO-Pro** simulation framework with a ZMQ-ba
 
 ## Installation
 
-This repository uses [uv](https://docs.astral.sh/uv/) for dependency management and supports modern PyTorch versions (2.4.0+).
+This repository uses [uv](https://docs.astral.sh/uv/) for dependency management and pins PyTorch 2.4.0 with CUDA 12.4 wheels.
 
 ### Prerequisites
 
 - Python 3.10 or 3.11
 - CUDA 12.4 (for GPU support)
-- Mamba (for environment management)
+- Micromamba (for environment management)
+- A C++ compiler (for the `egl-probe` native build)
 
 ### Setup Steps
 
-1. **Create a mamba environment and install uv:**
+Run these commands from the repository root. The [environment.yml](environment.yml)
+recipe provides Python 3.10, pip, CMake and Make. CMake is constrained to `<4`
+to support the legacy CMake configuration used by `egl-probe`.
+
+1. **Create the Micromamba environment and install uv:**
+
    ```bash
-   mamba create -n libero-pro python=3.10
-   mamba activate libero-pro
-   pip install uv
+   micromamba env create --file environment.yml
+   micromamba activate simulation_libero
+   python -m pip install uv
    ```
 
-2. **Install dependencies using uv inside the mamba environment:**
+2. **Install dependencies into the active Micromamba environment:**
+
    ```bash
-   UV_PROJECT_ENVIRONMENT=$MAMBA_ROOT_PREFIX/envs/libero-pro uv sync
+   UV_PROJECT_ENVIRONMENT="$CONDA_PREFIX" uv sync
+   ```
+
+3. **Verify the build tools and Python dependencies:**
+
+   ```bash
+   cmake --version
+   make --version
+   python -m pip check
    ```
 
 ### Communication Dependencies
