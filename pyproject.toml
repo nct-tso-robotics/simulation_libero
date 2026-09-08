@@ -23,7 +23,7 @@ maintainers = [
     { name = "Lorenzo Mazza", email = "lorenzo.mazza@nct-dresden.de" },
     { name = "Ariel Rodriguez", email = "ariel.rodriguezjimenez@nct-dresden.de" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.12"
 dependencies = [
     "hydra-core>=1.2.0",
     "numpy>=1.22.4",

@@ -40,7 +40,7 @@ This repository uses [uv](https://docs.astral.sh/uv/) for dependency management 
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.10 or 3.11
 - CUDA 12.4 (for GPU support)
 - Mamba (for environment management)
 
