@@ -1,0 +1,9 @@
+name: simulation_libero
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  # egl-probe uses CMake 2.8 compatibility, supported through CMake 3.x.
+  - cmake<4
+  - make
