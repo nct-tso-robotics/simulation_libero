@@ -35,7 +35,6 @@ libero/datasets/
 # Runtime/output directories
 experiments/
 rollouts/
-wandb/
 
 # Jupyter
 .ipynb_checkpoints/

@@ -4,7 +4,6 @@ import csv
 import datetime
 import logging
 import os
-import re
 from pathlib import Path
 
 import numpy as np
@@ -84,7 +83,6 @@ class Environment:
         output_folder: str,
         max_parallel_envs: int = 10,
         record_wrist_camera: bool = False,
-        resume_log_path: str = "",
     ):
         self.task_suite_name = task_suite_name
         self.seed = seed
@@ -95,7 +93,6 @@ class Environment:
         self.max_parallel_envs = max_parallel_envs
         self.current_status = ServerStatus.CREATING_ENV.value
         self.record_wrist_camera = record_wrist_camera
-        self.resume_log_path = resume_log_path
         self.client_name = DEFAULT_CLIENT_NAME
         self._rollout_date = datetime.datetime.now().strftime(
             "%Y-%m-%d_%H-%M-%S"
@@ -116,13 +113,10 @@ class Environment:
         self.recorders: list[EpisodeRecorder | None] = []
         self.recently_reset_indices: list[int] = []
         self._batch_global_indices: list[int] = []
-        self._pending_global_indices: list[int] = []
-        self._next_pending_offset: int = 0
         self.trajectory_columns = [
             column.value for column in LiberoTrajectoryColumn
         ]
         self._init_benchmark()
-        self._load_resume_state()
 
     @property
     def rollout_directory(self) -> Path:
@@ -181,49 +175,6 @@ class Environment:
             f"Loaded {self.num_envs} tasks for {self.task_suite_name}"
         )
 
-    def _load_resume_state(self) -> None:
-        """Restore completed trials from a previous interrupted server log."""
-        if not self.resume_log_path or not os.path.isfile(
-            self.resume_log_path
-        ):
-            return
-        trial_results: dict[int, dict[int, bool]] = {}
-        pattern = re.compile(
-            r"Env (\d+) .*episode done, success=(True|False), "
-            r"trials=(\d+)/\d+"
-        )
-        with open(
-            self.resume_log_path, "r", encoding="utf-8", errors="replace"
-        ) as resume_log:
-            for line in resume_log:
-                match = pattern.search(line)
-                if match is None:
-                    continue
-                env_index = int(match.group(1))
-                trial_index = int(match.group(3))
-                if not 0 <= env_index < self.num_envs:
-                    continue
-                trial_results.setdefault(env_index, {})[trial_index] = (
-                    match.group(2) == "True"
-                )
-        for env_index, results in trial_results.items():
-            completed = max(results, default=0)
-            self.number_of_resets[env_index] = min(
-                completed, self.num_trials_per_task
-            )
-            self.environments_successes[env_index] = sum(
-                int(success)
-                for trial, success in results.items()
-                if trial <= self.num_trials_per_task
-            )
-        restored_trials = sum(self.number_of_resets)
-        logging.info(
-            "Resumed %d/%d completed trials from %s",
-            restored_trials,
-            self.num_envs * self.num_trials_per_task,
-            self.resume_log_path,
-        )
-
     def _init_single_suite(self, benchmark_dict: dict) -> None:
         """Load tasks from a single benchmark suite."""
         if self.task_suite_name not in benchmark_dict:
@@ -273,20 +224,8 @@ class Environment:
         Intended to run in a background thread. Sets status to
         WAITING_ACTION when complete.
         """
-        self._pending_global_indices = [
-            index
-            for index, trials in enumerate(self.number_of_resets)
-            if trials < self.num_trials_per_task
-        ]
-        if not self._pending_global_indices:
-            self._write_results_csv()
-            self.current_status = ServerStatus.FINISHED.value
-            return
-        batch_size = min(
-            self.max_parallel_envs, len(self._pending_global_indices)
-        )
-        self._batch_global_indices = self._pending_global_indices[:batch_size]
-        self._next_pending_offset = batch_size
+        batch_size = min(self.max_parallel_envs, self.num_envs)
+        self._batch_global_indices = list(range(batch_size))
         self._create_batch_vec_env()
         self.current_status = ServerStatus.WAITING_ACTION.value
 
@@ -328,17 +267,12 @@ class Environment:
                 record_wrist_camera=self.record_wrist_camera,
             )
         self.vectorized_environment.reset()
-        initial_states = []
-        for global_index in self._batch_global_indices:
-            init_states = self.initial_states_per_task[global_index]
-            state_index = (
-                self.number_of_resets[global_index] % len(init_states)
-            )
-            initial_states.append(init_states[state_index])
-        observations = self.vectorized_environment.set_init_state(
-            initial_states
-        )
-        self._perform_wait_steps(initial_observations=observations)
+        initial_states = [
+            self.initial_states_per_task[global_index][0]
+            for global_index in self._batch_global_indices
+        ]
+        self.vectorized_environment.set_init_state(initial_states)
+        self._perform_wait_steps()
         self.recently_reset_indices = list(range(batch_size))
 
     def _advance_to_next_batch(self) -> bool:
@@ -349,24 +283,18 @@ class Environment:
         """
         self.vectorized_environment.close()
         self.vectorized_environment = None
-        if self._next_pending_offset >= len(self._pending_global_indices):
+        next_start = self._batch_global_indices[-1] + 1
+        if next_start >= self.num_envs:
             return False
-        end = min(
-            self._next_pending_offset + self.max_parallel_envs,
-            len(self._pending_global_indices),
-        )
-        self._batch_global_indices = self._pending_global_indices[
-            self._next_pending_offset:end
-        ]
-        self._next_pending_offset = end
+        end = min(next_start + self.max_parallel_envs, self.num_envs)
+        self._batch_global_indices = list(range(next_start, end))
         self._create_batch_vec_env()
         return True
 
-    def _perform_wait_steps(self, initial_observations) -> None:
+    def _perform_wait_steps(self) -> None:
         """Step batch envs with no-op actions for physics settling."""
         batch_size = len(self._batch_global_indices)
         all_actions = np.tile(NO_OP_ACTION, (batch_size, 1))
-        observations = initial_observations
         for _ in range(self.num_steps_wait):
             observations, _, _, _ = self.vectorized_environment.step(all_actions)
             for local_index in range(batch_size):

@@ -52,7 +52,6 @@ class LiberoServer(SocketServer):
         output_folder: str = "",
         max_parallel_envs: int = 10,
         record_wrist_camera: bool = False,
-        resume_log_path: str = "",
     ):
         """Initialize the server and start environment creation in background.
 
@@ -86,21 +85,12 @@ class LiberoServer(SocketServer):
             output_folder=self.output_folder,
             max_parallel_envs=max_parallel_envs,
             record_wrist_camera=record_wrist_camera,
-            resume_log_path=resume_log_path,
         )
         self._register_routes()
         thread = threading.Thread(
-            target=self._initialize_environment, daemon=True
+            target=self.environment.initialize, daemon=True
         )
         thread.start()
-
-    def _initialize_environment(self) -> None:
-        """Initialize environments and expose failures to the client."""
-        try:
-            self.environment.initialize()
-        except Exception:
-            logging.exception("LIBERO environment initialization failed")
-            self.environment.current_status = ServerStatus.ERROR.value
 
     def _register_routes(self) -> None:
         """Register all request routes with the socket server."""
@@ -334,21 +324,12 @@ class LiberoServer(SocketServer):
     def handle_client_request(self) -> dict:
         """Receive a client request, dispatch it, and send the response."""
         message = self.reply_socket.recv_string()
-        try:
-            request = json.loads(message)
-            success, response = self.handle_request(request)
-            if not success:
-                response[TransportKey.STATUS.value] = (
-                    ServerStatus.ERROR.value
-                )
-        except Exception as error:
-            logging.exception("LIBERO request handler failed")
-            response = {
-                TransportKey.STATUS.value: ServerStatus.ERROR.value,
-                TransportKey.ERROR_MSG.value: (
-                    f"{type(error).__name__}: {error}"
-                ),
-            }
+        request = json.loads(message)
+        success, response = self.handle_request(request)
+        if not success:
+            response[TransportKey.STATUS.value] = (
+                ServerStatus.ERROR.value
+            )
         self.reply_socket.send_string(json.dumps(response))
         if (
             response.get(TransportKey.STATUS.value)
