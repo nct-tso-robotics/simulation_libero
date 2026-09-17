@@ -23,9 +23,19 @@ ENV/
 
 # Ruff cache
 .ruff_cache/
-
+.pytest_cache/
+.libero/
+robotics_assets/
+libero/libero/assets/*
+!libero/libero/assets/*.py
+libero/libero/bddl_files/
+libero/libero/init_files/
+notebooks/custom_assets/
+end_to_end_training_runs/
 uv.lock
 libero_server.py
+results/
+unknown/
 
 # Datasets (h5py demonstration files - too large)
 libero/datasets/
