@@ -12,6 +12,8 @@ import robosuite.macros as macros
 
 import mujoco
 
+from libero.libero import get_libero_path
+
 import libero.libero.envs.bddl_utils as BDDLUtils
 from libero.libero.envs.robots import *
 from libero.libero.envs.utils import *
@@ -21,7 +23,6 @@ from libero.libero.envs.regions import *
 from libero.libero.envs.arenas import *
 
 
-DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 TASK_MAPPING = {}
 
@@ -119,7 +120,7 @@ class BDDLBaseDomain(SingleArmEnv):
         self.fixtures = []
         # self.custom_material_dict = {}
 
-        self.custom_asset_dir = os.path.abspath(os.path.join(DIR_PATH, "../assets"))
+        self.custom_asset_dir = get_libero_path(query_key="assets")
 
         self.bddl_file_name = bddl_file_name
         self.parsed_problem = BDDLUtils.robosuite_parse_problem(self.bddl_file_name)

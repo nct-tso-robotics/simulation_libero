@@ -3,20 +3,26 @@
 import datetime
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 import draccus
 import wandb
 import yaml
 
+from libero.libero import get_libero_path
 from tso_robotics_sockets import ServerStatus, TransportKey
 
+from versatil_inference.check_assets import check_assets
 from versatil_inference.server import LiberoServer
 from versatil_inference.socket_flags import TASK_SUITE_MAX_STEPS, TaskSuiteName
 
 import perturbation
 
 DATE_TIME = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+DEFAULT_EVALUATION_CONFIG = str(
+    Path(__file__).resolve().parents[1] / "evaluation_config.yaml"
+)
 
 PERTURBATION_EXTENDED_MAX_STEPS: dict[str, int] = {
     **TASK_SUITE_MAX_STEPS,
@@ -52,7 +58,7 @@ class EvalConfig:
     """Configuration for Libero evaluation."""
 
     task_suite_name: str = TaskSuiteName.LIBERO_OBJECT.value
-    evaluation_config_path: str = "./evaluation_config.yaml"
+    evaluation_config_path: str = DEFAULT_EVALUATION_CONFIG
     num_steps_wait: int = 20
     num_trials_per_task: int = 10
     resolution: int = 128
@@ -84,12 +90,6 @@ def setup_perturbations(config: EvalConfig) -> str:
         return config.task_suite_name
     with open(config.evaluation_config_path, "r", encoding="utf-8") as file:
         evaluation_config = yaml.safe_load(file)
-    evaluation_config["bddl_files_path"] = (
-        evaluation_config.get("bddl_files_path", "")
-        + "/"
-        + config.task_suite_name
-    )
-    evaluation_config["task_suite_name"] = config.task_suite_name
     use_swap = evaluation_config.get("use_swap", False)
     use_object = evaluation_config.get("use_object", False)
     use_language = evaluation_config.get("use_language", False)
@@ -103,15 +103,31 @@ def setup_perturbations(config: EvalConfig) -> str:
         use_environment,
     ]
     active_count = sum(perturbation_flags)
+    if active_count == 0:
+        return config.task_suite_name
+    config_directory = Path(config.evaluation_config_path).resolve().parent
+    for key, path_key in (
+        ("bddl_files_path", "bddl_files"),
+        ("init_file_dir", "init_states"),
+    ):
+        evaluation_config[key] = get_libero_path(query_key=path_key)
+    evaluation_config["script_path"] = str(
+        (config_directory / evaluation_config["script_path"]).resolve()
+    )
+    evaluation_config["init_file_dir"] += os.sep
+    evaluation_config["ood_task_configs"] = {
+        name: str((config_directory / path).resolve())
+        for name, path in evaluation_config.get("ood_task_configs", {}).items()
+    }
+    evaluation_config["bddl_files_path"] += "/" + config.task_suite_name
+    evaluation_config["task_suite_name"] = config.task_suite_name
     if active_count > 1:
         return _setup_multi_perturbation(
             config=config, evaluation_config=evaluation_config
         )
-    elif active_count == 1:
-        return _setup_single_perturbation(
-            config=config, evaluation_config=evaluation_config
-        )
-    return config.task_suite_name
+    return _setup_single_perturbation(
+        config=config, evaluation_config=evaluation_config
+    )
 
 
 def _setup_multi_perturbation(
@@ -206,10 +222,13 @@ def run_evaluation(config: EvalConfig) -> None:
     Args:
         config: Evaluation configuration.
     """
+    check_assets(task_suite_name=config.task_suite_name)
     if config.task_suite_name == TaskSuiteName.LIBERO_ALL.value:
         task_suite_name = config.task_suite_name
     else:
         task_suite_name = setup_perturbations(config)
+    if task_suite_name != config.task_suite_name:
+        check_assets(task_suite_name=task_suite_name)
     run_id = f"EVAL-{task_suite_name}-{DATE_TIME}"
     if config.run_id_note:
         run_id += f"--{config.run_id_note}"
