@@ -4,13 +4,12 @@ import re
 
 from robosuite.models.objects import MujocoXMLObject
 
-import pathlib
+from libero.libero import get_libero_path
 
 from libero.libero.envs.base_object import (
     register_object,
 )
 
-absolute_path = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 
 class CustomObjects(MujocoXMLObject):
@@ -40,7 +39,7 @@ class RedSticker(CustomObjects):
                  ):
         super().__init__(
             custom_path=os.path.abspath(os.path.join(
-                os.path.dirname(__file__), "../../../../notebooks/custom_assets/red_sticker/red_sticker.xml"
+                get_libero_path(query_key="custom_assets"), "red_sticker/red_sticker.xml"
             )),
             name=name,
             obj_name=obj_name,
@@ -65,7 +64,7 @@ class BlueRedSticker(CustomObjects):
                  ):
         super().__init__(
             custom_path=os.path.abspath(os.path.join(
-                os.path.dirname(__file__), "../../../../notebooks/custom_assets/blue_red_sticker/blue_red_sticker.xml"
+                get_libero_path(query_key="custom_assets"), "blue_red_sticker/blue_red_sticker.xml"
             )),
             name=name,
             obj_name=obj_name,
@@ -90,7 +89,7 @@ class RedBox(CustomObjects):
                  ):
         super().__init__(
             custom_path=os.path.abspath(os.path.join(
-                os.path.dirname(__file__), "../../../../notebooks/custom_assets/red_box/red_box.xml"
+                get_libero_path(query_key="custom_assets"), "red_box/red_box.xml"
             )),
             name=name,
             obj_name=obj_name,
@@ -113,7 +112,7 @@ class LiberoMugYellow(CustomObjects):
                  ):
         super().__init__(
             custom_path=os.path.abspath(os.path.join(
-                os.path.dirname(__file__), "../../../../notebooks/custom_assets/libero_mug_yellow/libero_mug_yellow.xml"
+                get_libero_path(query_key="custom_assets"), "libero_mug_yellow/libero_mug_yellow.xml"
             )),
             name=name,
             obj_name=obj_name,
@@ -134,7 +133,7 @@ class LiberoMugGreen(CustomObjects):
                  ):
         super().__init__(
             custom_path=os.path.abspath(os.path.join(
-                os.path.dirname(__file__), "../../../../notebooks/custom_assets/libero_mug_green/libero_mug_green.xml"
+                get_libero_path(query_key="custom_assets"), "libero_mug_green/libero_mug_green.xml"
             )),
             name=name,
             obj_name=obj_name,

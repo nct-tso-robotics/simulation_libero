@@ -4,9 +4,8 @@ import numpy as np
 from robosuite.models.objects import MujocoXMLObject
 from robosuite.utils.mjcf_utils import array_to_string
 
-import pathlib
+from libero.libero import get_libero_path
 
-absolute_path = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 from libero.libero.envs.base_object import register_object
 
@@ -15,8 +14,8 @@ class HopeBaseObject(MujocoXMLObject):
     def __init__(self, name, obj_name):
         super().__init__(
             os.path.join(
-                str(absolute_path),
-                f"assets/stable_hope_objects/{obj_name}/{obj_name}.xml",
+                get_libero_path(query_key="assets"),
+                f"stable_hope_objects/{obj_name}/{obj_name}.xml",
             ),
             name=name,
             joints=[dict(type="free", damping="0.0005")],

@@ -73,6 +73,11 @@ to support the legacy CMake configuration used by `egl-probe`.
    python -m pip check
    ```
 
+4. **Download the evaluation data and configure its paths:**
+
+   Follow [evaluation data setup](#download-and-configure-evaluation-data), then
+   check the selected suite before starting a rollout.
+
 ### Communication Dependencies
 
 This project uses [tso-robotics-sockets](https://github.com/Lorenzo-Mazza/tso_robotics_sockets) for ZMQ socket communication and [versatil-constants](https://github.com/Lorenzo-Mazza/versatil_constants) for shared domain constants. Both are installed automatically via `pyproject.toml`.
@@ -85,7 +90,7 @@ interchangeable.
 
 | Format | Use it for | Download location |
 |---|---|---|
-| Original HDF5 | Native LIBERO / robomimic workflows and VersatIL `libero_hdf5` configs. Files are stored as `*.hdf5` under `libero/datasets/`. | This repository's `benchmark_scripts/download_libero_datasets.py` script, or the HDF5 mirror at <https://huggingface.co/datasets/yifengzhu-hf/LIBERO-datasets>. |
+| Original HDF5 | Native LIBERO / robomimic workflows and VersatIL `libero_hdf5` configs. The `datasets` entry in `config_libero_pro.yaml` selects their directory. | This repository's `benchmark_scripts/download_libero_datasets.py` script, or the HDF5 mirror at <https://huggingface.co/datasets/yifengzhu-hf/LIBERO-datasets>. |
 | LeRobot | VersatIL `libero_lerobot` configs, including the OpenVLA-filtered 256x256 demonstrations from <https://huggingface.co/datasets/lerobot/libero>. | Follow the VersatIL repository's [`libero_lerobot` dataset instructions](https://github.com/Lorenzo-Mazza/VersatIL#available-benchmarks) and set `VERSATIL_LIBERO_LEROBOT_DIR` as described in its [environment configuration](https://github.com/Lorenzo-Mazza/VersatIL#environment-configuration). This repository's HDF5 downloader does not download LeRobot data. |
 
 ### Original HDF5 datasets
@@ -135,6 +140,63 @@ For more details on the original HDF5 data, see the original
 
 The evaluation uses a **server-client architecture** where the simulation server and the policy client communicate over ZMQ. The server runs environments in **parallel batches** (`max_parallel_envs` at a time) for fast evaluation.
 
+### Download and configure evaluation data
+
+Evaluation loads meshes, textures, BDDL task definitions and saved initial states
+from an external directory. Install these files on the simulation machine,
+including when the policy was trained with LeRobot demonstrations.
+
+Set the storage directory for this installation:
+
+```bash
+export ROBOTICS_ASSETS_DIR="/path/to/robotics_assets"
+mkdir -p "$ROBOTICS_ASSETS_DIR/libero_pro"
+```
+
+Download the evaluation files from this upstream LIBERO-Pro snapshot:
+
+```bash
+curl -fL https://github.com/Zxy-MLlab/LIBERO-PRO/archive/eafdb809426b13153aa1e4c42d6601844217dfec.tar.gz \
+  -o /tmp/libero-pro-evaluation-data.tar.gz
+
+tar -xzf /tmp/libero-pro-evaluation-data.tar.gz \
+  -C "$ROBOTICS_ASSETS_DIR/libero_pro" --strip-components=3 --wildcards \
+  '*/libero/libero/assets' '*/libero/libero/bddl_files' '*/libero/libero/init_files'
+tar -xzf /tmp/libero-pro-evaluation-data.tar.gz \
+  -C "$ROBOTICS_ASSETS_DIR/libero_pro" --strip-components=2 --wildcards \
+  '*/notebooks/custom_assets'
+```
+
+Additional task variants are available in the
+[LIBERO-Pro evaluation data](https://huggingface.co/datasets/zhouxueyang/LIBERO-Pro).
+Place their BDDL and initial-state files under the matching suite directories.
+The resulting layout is:
+
+```text
+robotics_assets/libero_pro/
+├── assets/
+├── bddl_files/
+├── init_files/
+└── custom_assets/
+```
+
+Create the path configuration from the active LIBERO-Pro environment:
+
+```bash
+python -c 'from libero.libero import set_libero_default_path; set_libero_default_path()'
+python -m versatil_inference.check_assets --task_suite_name libero_10
+```
+
+The setup command writes `~/.libero/config_libero_pro.yaml`. For an existing data
+layout, pass its root to `set_libero_default_path(custom_location="/path/to/data")`,
+or edit the `assets`, `bddl_files`, `init_states` and `custom_assets` entries in
+that YAML. Relative entries resolve beside the configuration file. Set `LIBERO_CONFIG_PATH` to use another configuration directory.
+
+Rollout startup runs this check before WandB or server creation. It prints the
+resolved paths and lists missing task files. Perturbation generation writes to
+the configured `bddl_files` and `init_states` directories, which must be writable
+when generating new variants.
+
 ### Step 1: Start the LIBERO Simulation Server
 
 On the simulation machine, run:
@@ -151,7 +213,8 @@ python -m versatil_inference.run_evaluation \
 
 **Configuration options:**
 - `--task_suite_name`: LIBERO benchmark suite (`libero_spatial`, `libero_object`, `libero_goal`, `libero_10`, `libero_90`, `libero_all`)
-- `--evaluation_config_path`: Path to perturbation config (default: `./evaluation_config.yaml`)
+- `--evaluation_config_path`: Path to perturbation config (default: the installed
+  `evaluation_config.yaml`). Generator script and OOD-config paths resolve beside that YAML; task data paths come from `config_libero_pro.yaml`.
 - `--ip_address`: IP to bind the server (default: `0.0.0.0`)
 - `--port`: Port for ZMQ communication (default: `5556`)
 - `--num_trials_per_task`: Number of episodes per task (default: `10`)
@@ -219,7 +282,7 @@ The server exposes three routes via ZMQ, matching the standardized VersatIL simu
 
 # Original LIBERO-Pro README
 
-*The following is the original README from the LIBERO-Pro benchmark for reference:*
+*Use the evaluation data setup above for this fork’s asset paths. The following is the original README from the LIBERO-Pro benchmark for reference:*
 
 ---
 

@@ -1,3 +1,4 @@
+from libero.libero import get_libero_path
 import collections
 import numpy as np
 import os
@@ -272,8 +273,6 @@ def postprocess_model_xml(xml_str, cameras_dict={}, demo_generation=False):
     all_elements = meshes + textures
 
     # also replace paths for libero
-    libero_path = os.getcwd() + "/libero"
-    libero_path_split = libero_path.split("/")
 
     for elem in all_elements:
         old_path = elem.get("file")
@@ -287,12 +286,13 @@ def postprocess_model_xml(xml_str, cameras_dict={}, demo_generation=False):
             new_path_split = path_split + old_path_split[ind + 1 :]
             new_path = "/".join(new_path_split)
             elem.set("file", new_path)
-        elif "libero" in old_path_split and demo_generation:
+        elif "libero" in old_path_split and "assets" in old_path_split and demo_generation:
             ind = max(
-                loc for loc, val in enumerate(old_path_split) if val == "libero"
+                loc for loc, val in enumerate(old_path_split) if val == "assets"
             )  # last occurrence index
-            new_path_split = libero_path_split + old_path_split[ind + 1 :]
-            new_path = "/".join(new_path_split)
+            new_path = os.path.join(
+                get_libero_path(query_key="assets"), *old_path_split[ind + 1 :]
+            )
             elem.set("file", new_path)
         else:
             continue

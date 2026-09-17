@@ -6,9 +6,8 @@ from dataclasses import dataclass
 from robosuite.models.objects import MujocoXMLObject
 from easydict import EasyDict
 
-import pathlib
+from libero.libero import get_libero_path
 
-absolute_path = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 from libero.libero.envs.base_object import (
     register_visual_change_object,
@@ -20,7 +19,7 @@ class ArticulatedObject(MujocoXMLObject):
     def __init__(self, name, obj_name, joints=[dict(type="free", damping="0.0005")]):
         super().__init__(
             os.path.join(
-                str(absolute_path), f"assets/articulated_objects/{obj_name}.xml"
+                get_libero_path(query_key="assets"), f"articulated_objects/{obj_name}.xml"
             ),
             name=name,
             joints=joints,
