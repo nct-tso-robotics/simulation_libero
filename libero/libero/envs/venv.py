@@ -8,10 +8,11 @@ import time
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from multiprocessing import Array, Pipe, connection
-from multiprocessing.context import Process
+from multiprocessing import connection, get_context
 from typing import Any, Callable, List, Optional, Tuple, Union
 
+
+SPAWN_CONTEXT = get_context("spawn")
 
 gym_old_venv_step_type = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 gym_new_venv_step_type = Tuple[
@@ -180,7 +181,9 @@ class ShArray:
     """Wrapper of multiprocessing Array."""
 
     def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
-        self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))  # type: ignore
+        self.arr = SPAWN_CONTEXT.Array(
+            _NP_TO_CT[dtype.type], int(np.prod(shape))
+        )  # type: ignore
         self.dtype = dtype
         self.shape = shape
 
@@ -356,7 +359,7 @@ class SubprocEnvWorker(EnvWorker):
     def __init__(
         self, env_fn: Callable[[], gym.Env], share_memory: bool = False
     ) -> None:
-        self.parent_remote, self.child_remote = Pipe()
+        self.parent_remote, self.child_remote = SPAWN_CONTEXT.Pipe()
         self.share_memory = share_memory
         self.buffer: Optional[Union[dict, tuple, ShArray]] = None
         if self.share_memory:
@@ -371,7 +374,7 @@ class SubprocEnvWorker(EnvWorker):
             CloudpickleWrapper(env_fn),
             self.buffer,
         )
-        self.process = Process(target=_worker, args=args, daemon=True)
+        self.process = SPAWN_CONTEXT.Process(target=_worker, args=args, daemon=True)
         self.process.start()
         self.child_remote.close()
         super().__init__(env_fn)

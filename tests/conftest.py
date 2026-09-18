@@ -1,5 +1,6 @@
 """Fixtures for evaluation setup tests."""
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -8,8 +9,23 @@ import pytest
 import yaml
 
 import libero.libero as libero
-from libero.libero.benchmark import Task
+from libero.libero import get_default_path_dict
+from libero.libero.benchmark import Benchmark, Task, get_benchmark_dict
 from versatil_inference import check_assets
+
+
+@pytest.fixture
+def external_benchmark_factory(
+    path_config_factory: Callable[..., Path],
+) -> Callable[..., Benchmark]:
+    def factory(suite_name: str) -> Benchmark:
+        data_root = os.environ.get("LIBERO_TEST_DATA_ROOT")
+        if data_root is None:
+            pytest.skip("Set LIBERO_TEST_DATA_ROOT to run external-asset tests.")
+        path_config_factory(values=get_default_path_dict(custom_location=data_root))
+        return get_benchmark_dict()[suite_name]()
+
+    return factory
 
 
 @pytest.fixture
@@ -17,6 +33,7 @@ def path_config_factory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Callable[..., Path]:
     path = tmp_path / "config" / "config_libero_pro.yaml"
+    monkeypatch.setenv("LIBERO_CONFIG_PATH", str(path.parent))
     monkeypatch.setattr(libero, "config_file", str(path))
     monkeypatch.setattr(check_assets, "config_file", str(path))
 
